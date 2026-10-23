@@ -1,0 +1,11 @@
+{
+  "name": "three-crt-screen",
+  "version": "0.1.0",
+  "description": "Old-TV / giant LED billboard ShaderMaterial for three.js: scan lines, interlace, rolling band, RGB split, glitches, dead blocks, static.",
+  "type": "module",
+  "main": "src/crt-screen.js",
+  "files": ["src", "README.md", "LICENSE"],
+  "keywords": ["three", "threejs", "crt", "shader", "scanlines", "glitch", "retro", "tv", "billboard", "led"],
+  "peerDependencies": { "three": ">=0.150.0" },
+  "license": "MIT"
+}
