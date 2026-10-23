@@ -6,6 +6,8 @@ Scan lines, interlaced fields, de-interlace combing, a bright band rolling down 
 
 Built for [Akuma Tenshi](https://fracturelabs.net) by Fracture Labs. MIT licensed.
 
+**See it in action:** [video on X](https://x.com/GameFoundryNet/status/2113627011835215946)
+
 ## Quick start
 
 ```js
