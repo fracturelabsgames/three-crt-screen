@@ -38,7 +38,7 @@ setCRT(mat, { glitch: 1.5, deadBlocks: .1 });
 | `quadAspect` | Width / height of the screen mesh, used when the geometry has no `aSize` attribute. |
 | `fog` | `true` (default) so distant screens fade into scene fog. |
 
-The picture is fitted to the screen (`fit`: 0 crops to fill, 1 letterboxes), so one clip can play on screens of different shapes.
+The picture is fitted to the screen, so one clip can play on screens of different shapes. `fit` picks the mode: 0 cover (fill and crop), 1 contain (show it all, with bars), 2 stretch, 3 fit width. `zoom`, `panX` / `panY` and `flipX` / `flipY` fine-tune the framing, and `barLevel` sets the colour of the bars. For a wide logo on a 16:9 screen, use contain, or give the screen the picture's own proportions.
 
 ### Many screens, one draw call
 
@@ -49,7 +49,7 @@ Merge any number of screen quads into one geometry and give each vertex two opti
 
 ## Demo
 
-Open `examples/index.html` through any local web server (for example `npx serve` in the repo folder). Drop an image or video on the page, pick a preset and tweak every parameter live. "copy settings" puts the current values on the clipboard as JSON, ready to paste into `createCRTMaterial`.
+Open `examples/index.html` through any local web server (for example `npx serve` in the repo folder). Drop an image or video on the page, pick a preset and tweak every parameter live. "screen shape" switches the screen between common aspect ratios or matches it to the loaded picture. "copy settings" puts the current values on the clipboard as JSON, ready to paste into `createCRTMaterial`.
 
 ## Presets
 
@@ -77,7 +77,18 @@ All parameters are uniforms on the material (`mat.uniforms.name.value`), also li
 | `saturation` | 1.12 | 0 to 3 | Colour saturation (0 = black and white). |
 | `gamma` | 1 | 0.3 to 3 | Gamma curve applied to the source picture. |
 | `gain` | 1 | 0 to 6 | Final emission multiplier (raise it so the screen glows / blooms in a lit scene). |
-| `fit` | 0 | 0 to 1 | 0 = cover (crop to fill the screen), 1 = contain (letterbox in black). |
+
+### Framing (fit, zoom, pan, flip)
+
+| Parameter | Default | Range | What it does |
+|---|---|---|---|
+| `fit` | 0 | 0 to 3 | How the picture fills the screen: 0 cover (fill, crop the overflow), 1 contain (whole picture, letterbox bars), 2 stretch (fill, distort), 3 width (fit the width, crop or bar top and bottom). |
+| `zoom` | 1 | 0.1 to 5 | Scale the picture inside the screen (above 1 crops in, below 1 shrinks with bars). |
+| `panX` | 0 | -1 to 1 | Slide the picture sideways (-1 = show its left edge, 1 = its right edge, when there is overflow to pan through). |
+| `panY` | 0 | -1 to 1 | Slide the picture up / down (-1 = bottom edge, 1 = top edge). |
+| `flipX` | 0 | 0 to 1 | 1 = mirror the picture horizontally. |
+| `flipY` | 0 | 0 to 1 | 1 = flip the picture vertically. |
+| `barLevel` | 0 | 0 to 1 | Brightness of the letterbox bars (0 = black, a little above 0 = an unlit panel). |
 
 ### Tube shape
 

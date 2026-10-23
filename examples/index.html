@@ -12,7 +12,7 @@
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/" } }</script>
 </head>
 <body>
-<div id="hint"><b>three-crt-screen</b> · drop an image or video on the page (or use "load file" in the panel) · drag to orbit · pick a preset, then tweak any parameter</div>
+<div id="hint"><b>three-crt-screen</b> · drop an image or video on the page (or use "load file" in the panel) · drag to orbit · pick a preset, then tweak any parameter · framing sets how the picture fits the screen</div>
 <input type="file" id="file" accept="image/*,video/*" hidden>
 <script type="module">
 import * as THREE from 'three';
@@ -42,9 +42,14 @@ drawCard(0);
 
 const params = Object.assign({}, CRT_DEFAULTS, CRT_PRESETS.crtTV);
 const mat = createCRTMaterial(THREE, Object.assign({ map: card, mapAspect: 16 / 9, fog: false }, params));
-const screen = new THREE.Mesh(new THREE.PlaneGeometry(16 / 9 * 1.6, 1.6), mat); scene.add(screen);
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); scene.add(screen);
 // a dark bezel so curvature and corners read
-const bez = new THREE.Mesh(new THREE.PlaneGeometry(16 / 9 * 1.6 + .2, 1.8), new THREE.MeshBasicMaterial({ color: 0x15151c })); bez.position.z = -.01; scene.add(bez);
+const bez = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x15151c })); bez.position.z = -.01; scene.add(bez);
+// screen shape: a fixed aspect, or 'match picture' (follows the loaded image / video)
+const SHAPES = { 'match picture': 0, '16:9': 16 / 9, '4:3': 4 / 3, '21:9': 21 / 9, '1:1': 1, '3:4 portrait': 3 / 4, '9:16 portrait': 9 / 16 };
+let shapeAspect = -1;
+function setShape(a) { if (Math.abs(a - shapeAspect) < 1e-4) return; shapeAspect = a; const h = a >= 1 ? 1.6 / Math.max(1, a / 1.9) : 1.8, w = h * a;
+  screen.scale.set(w, h, 1); bez.scale.set(w + .2, h + .2, 1); mat.uniforms.uQuadAspect.value = a; }
 let usingCard = true;
 
 // load any image / video
@@ -59,21 +64,22 @@ document.getElementById('file').addEventListener('change', e => e.target.files[0
 
 // GUI: presets + every parameter, grouped
 const gui = new GUI({ title: 'CRT screen' });
-const ui = { preset: 'crtTV', 'load file': () => document.getElementById('file').click(), 'copy settings': () => navigator.clipboard.writeText(JSON.stringify(params, null, 2)), 'test card': () => { setCRT(mat, { map: card }); mat.uniforms.uMapAspect.value = 16 / 9; usingCard = true; } };
+const ui = { screen: '16:9', preset: 'crtTV', 'load file': () => document.getElementById('file').click(), 'copy settings': () => navigator.clipboard.writeText(JSON.stringify(params, null, 2)), 'test card': () => { setCRT(mat, { map: card }); mat.uniforms.uMapAspect.value = 16 / 9; usingCard = true; } };
 gui.add(ui, 'preset', Object.keys(CRT_PRESETS)).onChange(p => { Object.assign(params, CRT_DEFAULTS, CRT_PRESETS[p]); setCRT(mat, params); gui.controllersRecursive().forEach(c => c.updateDisplay()); });
+gui.add(ui, 'screen', Object.keys(SHAPES)).name('screen shape');
 gui.add(ui, 'load file'); gui.add(ui, 'test card'); gui.add(ui, 'copy settings');
 const folders = {};
 for (const [k, , min, max, grp, desc] of CRT_PARAMS) {
   const f = folders[grp] || (folders[grp] = gui.addFolder(grp)); f.close();
-  const step = k === 'maskType' || k === 'fit' ? 1 : (max - min) / 400;
-  const c = f.add(params, k, min, max, step).onChange(v => setCRT(mat, { [k]: v })); c.domElement.title = desc;
+  const opts = { fit: { cover: 0, contain: 1, stretch: 2, 'fit width': 3 }, maskType: { none: 0, 'aperture grille': 1, 'shadow mask': 2, 'LED dots': 3 }, flipX: { off: 0, on: 1 }, flipY: { off: 0, on: 1 } }[k];
+  const c = (opts ? f.add(params, k, opts) : f.add(params, k, min, max, (max - min) / 400)).onChange(v => setCRT(mat, { [k]: +v })); c.domElement.title = desc;
 }
-folders.picture.open();
+folders.framing.open();
 
 function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => { const t = clock.getElapsedTime(); if (usingCard) drawCard(t); updateCRT(mat, t); controls.update(); renderer.render(scene, camera); });
+renderer.setAnimationLoop(() => { const t = clock.getElapsedTime(); setShape(SHAPES[ui.screen] || mat.uniforms.uMapAspect.value); if (usingCard) drawCard(t); updateCRT(mat, t); controls.update(); renderer.render(scene, camera); });
 </script>
 </body>
 </html>

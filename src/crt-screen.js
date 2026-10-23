@@ -18,7 +18,14 @@ export const CRT_PARAMS = [
   ['saturation', 1.12, 0, 3, 'picture', 'Colour saturation (0 = black and white).'],
   ['gamma', 1.0, .3, 3, 'picture', 'Gamma curve applied to the source picture.'],
   ['gain', 1.0, 0, 6, 'picture', 'Final emission multiplier (raise it so the screen glows / blooms in a lit scene).'],
-  ['fit', 0, 0, 1, 'picture', '0 = cover (crop to fill the screen), 1 = contain (letterbox in black).'],
+  // framing: how the picture sits on the screen
+  ['fit', 0, 0, 3, 'framing', 'How the picture fills the screen: 0 cover (fill, crop the overflow), 1 contain (whole picture, letterbox bars), 2 stretch (fill, distort), 3 width (fit the width, crop or bar top and bottom).'],
+  ['zoom', 1, .1, 5, 'framing', 'Scale the picture inside the screen (above 1 crops in, below 1 shrinks with bars).'],
+  ['panX', 0, -1, 1, 'framing', 'Slide the picture sideways (-1 = show its left edge, 1 = its right edge, when there is overflow to pan through).'],
+  ['panY', 0, -1, 1, 'framing', 'Slide the picture up / down (-1 = bottom edge, 1 = top edge).'],
+  ['flipX', 0, 0, 1, 'framing', '1 = mirror the picture horizontally.'],
+  ['flipY', 0, 0, 1, 'framing', '1 = flip the picture vertically.'],
+  ['barLevel', 0, 0, 1, 'framing', 'Brightness of the letterbox bars (0 = black, a little above 0 = an unlit panel).'],
   // geometry of the tube
   ['curvature', 0.0, 0, 1, 'tube', 'Barrel distortion of a curved glass tube.'],
   ['vignette', 0.25, 0, 1, 'tube', 'Darkening towards the corners.'],
@@ -104,7 +111,7 @@ void main() {
 
 const CRT_FS = /* glsl */`
 uniform sampler2D uMap; uniform float uMapAspect, uTime;
-uniform float brightness, contrast, saturation, gamma, gain, fit;
+uniform float brightness, contrast, saturation, gamma, gain, fit, zoom, panX, panY, flipX, flipY, barLevel;
 uniform float curvature, vignette, cornerRadius, bezel;
 uniform float pixelate, resX, resY, scanlines, scanlineScroll, maskType, maskStrength, maskScale, farFade;
 uniform float interlace, fieldRate, deinterlace, combOffset;
@@ -128,13 +135,22 @@ float event(float t, float rate, float len, float salt) {
   float st = h11(k * 3.31 + salt * 1.7 + gSeed) * (slot - len);
   return (u >= st && u < st + len) ? (u - st) / len : -1.;
 }
+// screen uv -> picture uv. s = visible fraction of the picture along x / y (1 = exactly fits; < 1 = cropped; > 1 = bars)
 vec2 fitUV(vec2 uv) {
   float qa = vQuadAspect, ma = uMapAspect; vec2 s;
   if (fit < .5) s = qa > ma ? vec2(1., ma / qa) : vec2(qa / ma, 1.);
-  else s = qa > ma ? vec2(qa / ma, 1.) : vec2(1., ma / qa);
-  return (uv - .5) * s + .5;
+  else if (fit < 1.5) s = qa > ma ? vec2(qa / ma, 1.) : vec2(1., ma / qa);
+  else if (fit < 2.5) s = vec2(1.);
+  else s = vec2(1., ma / qa);
+  s /= max(zoom, .01);
+  // pan through the overflow (only where the picture is bigger than the screen)
+  vec2 slack = max(1. - s, 0.) * .5;
+  vec2 m = (uv - .5) * s + .5 + vec2(panX, panY) * slack;
+  if (flipX > .5) m.x = 1. - m.x;
+  if (flipY > .5) m.y = 1. - m.y;
+  return m;
 }
-vec3 tap(vec2 uv) { vec2 m = fitUV(uv); if (fit > .5 && (m.x < 0. || m.x > 1. || m.y < 0. || m.y > 1.)) return vec3(0.); return texture2D(uMap, m).rgb; }
+vec3 tap(vec2 uv) { vec2 m = fitUV(uv); if (m.x < 0. || m.x > 1. || m.y < 0. || m.y > 1.) return vec3(barLevel * barLevel); return texture2D(uMap, m).rgb; }
 void main() {
   gSeed = seed + vSeedA;
   float t = fps > 0. ? floor(uTime * fps) / fps : uTime;
